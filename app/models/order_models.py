@@ -1,5 +1,49 @@
-import datetime
+from datetime import datetime
 from ..models.database_class import pool
+
+
+# 拿訂單資訊
+def get_order_details(customer_id, order_id):
+    try:
+        connect = pool.get_connection()
+        cursor = connect.cursor()
+        sql = '''SELECT `Order`.order_id,`Products`.product_name, `Products`.price,
+        `Order_item`.amount, `Order`.purchase_time, `Order`.total  
+        FROM `Order` 
+        INNER JOIN `Order_item` ON `Order`.order_id = `Order_item`.order_id 
+        INNER JOIN `Customer` ON `Order`.customer_id = `Customer`.customer_id 
+        INNER JOIN `Products` ON `Order_item`.product_id = `Products`.product_id 
+        WHERE `Order`.customer_id =%s AND `Order`.order_id = %s'''
+
+        data = (customer_id, order_id)
+        cursor.execute(sql, data)
+        order_details = cursor.fetchall()
+
+        data = {'order_id': order_id,
+               'total_price': 0,
+               'purchase_time': '',
+               'customer_id': customer_id,
+               'product': [],
+                'product_price':[],
+               'amount':[]
+                }
+        for i in range(len(order_details)):
+            data['total_price'] = order_details[i][5]
+            data['purchase_time'] = order_details[i][4]
+            data['product'].append(order_details[i][1])
+            data['amount'].append(order_details[i][3])
+            data['product_price'].append(order_details[i][2])
+
+    except Exception as e:
+        print(e)
+
+        return False
+    else:
+        connect.commit()
+        return data
+    finally:
+        cursor.close()
+        connect.close()
 
 
 # 先建立ORDER和算出多少錢建檔
@@ -7,22 +51,24 @@ def add_new_order_func(customer_id, product_id, amount):
     try:
         connect = pool.get_connection()
         cursor = connect.cursor()
-        current_time = datetime.datetime.now()
+        current_time = datetime.now()
+        # 這邊會先做一次檢查 product_id僅有1和2，亂打會跳出去
         total_price = calculate_money(cursor, product_id, amount)
-        sql = 'INSERT INTO `Order` (order_id, customer_id, purchase_time, total) ' \
-              'VALUES (DEFAULT, %s, %s, %s)'
-        data = (customer_id, current_time, total_price)
-        cursor.execute(sql, data)
-        cursor.execute('SELECT LAST_INSERT_ID()')
-        order_id = cursor.fetchone()[0]
-        for i in range(len(product_id)):
-            connect_order_with_order_item(cursor, order_id, product_id[i], amount[i])
+        if total_price is False:
+            return False
+        else:
+            sql = 'INSERT INTO `Order` (order_id, customer_id, purchase_time, total) ' \
+                  'VALUES (DEFAULT, %s, %s, %s)'
+            data = (customer_id, current_time, total_price)
+            cursor.execute(sql, data)
+            cursor.execute('SELECT LAST_INSERT_ID()')
+            order_id = cursor.fetchone()[0]
+            for i in range(len(product_id)):
+                connect_order_with_order_item(cursor, order_id, product_id[i], amount[i])
     except Exception as e:
         connect.rollback()
         print(e)
-
-        return {'ok': False,
-                'message': 'Something went wrong'}
+        return False
     else:
         connect.commit()
         return {'ok': True,
@@ -35,13 +81,13 @@ def add_new_order_func(customer_id, product_id, amount):
         connect.close()
 
 
+# 修改訂單
 def modify_order_func(order_id, product_id, amount, customer_id):
     try:
         connect = pool.get_connection()
         cursor = connect.cursor()
-        modify_time = datetime.datetime.now()
+        modify_time = datetime.now()
 
-        # 修改order_item訂單
         for i in range(len(product_id)):
             sql = 'UPDATE `Order_item` SET amount = %s ' \
                   'WHERE order_id = %s AND product_id = %s'
@@ -53,37 +99,49 @@ def modify_order_func(order_id, product_id, amount, customer_id):
         data = (order_id,)
         cursor.execute(sql, data)
         products = cursor.fetchall()
-        new_total_price = 0
+        new_data = {'ok': True,
+                'order_id': order_id,
+                'modified_time': modify_time,
+                'product': [],
+                'price': [],
+                'amount': [],
+                'total': 0
+                }
         for i in range(len(products)):
             price = get_product_price(cursor, products[i][0])[0]
-            new_total_price += price*products[i][1]
+            new_data['product'].append(products[i][0])
+            new_data['price'].append(price)
+            new_data['amount'].append(products[i][1])
+            new_data['total'] += price*products[i][1]
         sql = 'UPDATE `Order` SET total = %s, purchase_time = %s ' \
               'WHERE order_id = %s AND customer_id = %s'
-        data = (new_total_price, modify_time, order_id, customer_id)
+        data = (new_data['total'], modify_time, order_id, customer_id)
         cursor.execute(sql, data)
 
     except Exception as e:
         connect.rollback()
         print(e)
-        return {'ok': False,
-                'message': 'Something went wrong'}
+        return False
     else:
         connect.commit()
-        return {'ok': True,
-                'order_id': order_id,
-                }
+        return new_data
     finally:
         cursor.close()
         connect.close()
 
 
+# 拿product價格，同時檢查是否有該product
 def get_product_price(cursor, product_index):
     sql = 'SELECT price FROM Products where product_id = %s'
     cursor.execute(sql, (product_index,))
     data = cursor.fetchone()
+    print('data from get product price', data)
+    if data is None:
+        return False
     return data
 
 
+# 算錢
 def calculate_money(cursor, product_id, amount):
     total_price = 0
     for i in range(len(product_id)):
