@@ -17,7 +17,7 @@ services:
       - 3307:3306
     volumes:
       - ./mysqlfolder/datadir:/var/lib/mysql
-      - :/flask/flask/mysql-dump/docker-entrypoint-initdb.d
+      - /:/flask/mysql-dump/docker-entrypoint-initdb.d
 
   fastapi-container:
     build: .
