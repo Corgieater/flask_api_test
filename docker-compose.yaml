@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql
+    container_name: db
+    restart: always
+    environment:
+      - MYSQL_DATABASE=smarter
+      - MYSQL_ROOT_USER=root
+      - MYSQL_ROOT_PASSWORD=PASSWORD
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+    ports:
+      - 3307:3306
+    volumes:
+      - ./mysqlfolder/datadir:/var/lib/mysql
+      - ./flask:/mysql-dump/docker-entrypoint-initdb.d
+
+  fastapi-container:
+    build: ./flask
+    container_name: fastapi-container
+    restart: always
+    ports:
+      - 8000:8000
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db:mysql
