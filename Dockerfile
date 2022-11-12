@@ -1,8 +1,8 @@
 FROM python
 
-WORKDIR /flask
+WORKDIR /flask/flask
 
-COPY requirements.txt .
+COPY /flask/requirements.txt .
 
 RUN pip install -r requirements.txt
 
