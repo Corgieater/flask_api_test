@@ -20,7 +20,7 @@ services:
       - ./flask:/mysql-dump/docker-entrypoint-initdb.d
 
   fastapi-container:
-    build: ./flask
+    build: .
     container_name: fastapi-container
     restart: always
     ports:
