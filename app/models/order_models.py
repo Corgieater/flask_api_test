@@ -1,20 +1,5 @@
-import mysql.connector
-import mysql.connector.pooling
 import datetime
-
-db_config = {
-    "host": "localhost",
-    "port": "3306",
-    "user": "root",
-    "password": "PASSWORD",
-    "database": "smarter",
-}
-
-pool = mysql.connector.pooling.MySQLConnectionPool \
-    (pool_name="pool",
-     pool_size=5,
-     auth_plugin='mysql_native_password',
-     **db_config)
+from ..models.database_class import pool
 
 
 # 先建立ORDER和算出多少錢建檔
