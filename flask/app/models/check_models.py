@@ -6,7 +6,7 @@ def check_if_order(customer_id, order_id):
     try:
         connect = pool.get_connection()
         cursor = connect.cursor()
-        sql = '''SELECT * FROM `Order` WHERE customer_id = %s 
+        sql = '''SELECT * FROM `order` WHERE customer_id = %s 
         AND order_id = %s'''
         data = (customer_id, order_id)
         cursor.execute(sql, data)
