@@ -7,13 +7,13 @@ def get_order_details(customer_id, order_id):
     try:
         connect = pool.get_connection()
         cursor = connect.cursor()
-        sql = '''SELECT `Order`.order_id,`Products`.product_name, `Products`.price,
-        `Order_item`.amount, `Order`.purchase_time, `Order`.total  
-        FROM `Order` 
-        INNER JOIN `Order_item` ON `Order`.order_id = `Order_item`.order_id 
-        INNER JOIN `Customer` ON `Order`.customer_id = `Customer`.customer_id 
-        INNER JOIN `Products` ON `Order_item`.product_id = `Products`.product_id 
-        WHERE `Order`.customer_id =%s AND `Order`.order_id = %s'''
+        sql = '''SELECT `order`.order_id,`products`.product_name, `products`.price,
+        `order_item`.amount, `order`.purchase_time, `order`.total  
+        FROM `order` 
+        INNER JOIN `order_item` ON `order`.order_id = `order_item`.order_id 
+        INNER JOIN `customer` ON `order`.customer_id = `customer`.customer_id 
+        INNER JOIN `products` ON `order_item`.product_id = `products`.product_id 
+        WHERE `order`.customer_id =%s AND `order`.order_id = %s'''
 
         data = (customer_id, order_id)
         cursor.execute(sql, data)
@@ -57,7 +57,7 @@ def add_new_order_func(customer_id, product_id, amount):
         if total_price is False:
             return False
         else:
-            sql = 'INSERT INTO `Order` (order_id, customer_id, purchase_time, total) ' \
+            sql = 'INSERT INTO `order` (order_id, customer_id, purchase_time, total) ' \
                   'VALUES (DEFAULT, %s, %s, %s)'
             data = (customer_id, current_time, total_price)
             cursor.execute(sql, data)
@@ -89,13 +89,13 @@ def modify_order_func(order_id, product_id, amount, customer_id):
         modify_time = datetime.now()
 
         for i in range(len(product_id)):
-            sql = 'UPDATE `Order_item` SET amount = %s ' \
+            sql = 'UPDATE `order_item` SET amount = %s ' \
                   'WHERE order_id = %s AND product_id = %s'
 
             data = (amount[i], order_id, product_id[i])
             cursor.execute(sql, data)
 
-        sql = 'SELECT product_id, amount FROM `Order_item` WHERE order_id = %s'
+        sql = 'SELECT product_id, amount FROM `order_item` WHERE order_id = %s'
         data = (order_id,)
         cursor.execute(sql, data)
         products = cursor.fetchall()
@@ -113,7 +113,7 @@ def modify_order_func(order_id, product_id, amount, customer_id):
             new_data['price'].append(price)
             new_data['amount'].append(products[i][1])
             new_data['total'] += price*products[i][1]
-        sql = 'UPDATE `Order` SET total = %s, purchase_time = %s ' \
+        sql = 'UPDATE `order` SET total = %s, purchase_time = %s ' \
               'WHERE order_id = %s AND customer_id = %s'
         data = (new_data['total'], modify_time, order_id, customer_id)
         cursor.execute(sql, data)
@@ -132,10 +132,9 @@ def modify_order_func(order_id, product_id, amount, customer_id):
 
 # 拿product價格，同時檢查是否有該product
 def get_product_price(cursor, product_index):
-    sql = 'SELECT price FROM Products where product_id = %s'
+    sql = 'SELECT price FROM `products` where product_id = %s'
     cursor.execute(sql, (product_index,))
     data = cursor.fetchone()
-    print('data from get product price', data)
     if data is None:
         return False
     return data
@@ -152,7 +151,7 @@ def calculate_money(cursor, product_id, amount):
 
 # 把使用者買的東西記錄在order_item
 def connect_order_with_order_item(cursor, order_id, product_id, amount):
-    sql = 'INSERT INTO `Order_item` (order_id, product_id, amount) ' \
+    sql = 'INSERT INTO `order_item` (order_id, product_id, amount) ' \
           'VALUES (%s, %s, %s)'
     data = (order_id, product_id, amount)
     cursor.execute(sql, data)

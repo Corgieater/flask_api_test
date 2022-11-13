@@ -2,7 +2,9 @@ version: "3.9"
 
 services:
   db:
-    image: mysql
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+    image: mysql:latest
     container_name: db
     restart: always
     environment:
@@ -15,12 +17,11 @@ services:
       retries: 10
     ports:
       - 3307:3306
-    volumes:
-      - ./mysqlfolder/datadir:/var/lib/mysql
-      - ./mysql-dump/docker-entrypoint-initdb.d
 
   fastapi-container:
-    build: .
+    build:
+      context: ./
+      dockerfile: Dockerfile
     container_name: fastapi-container
     restart: always
     ports:
@@ -29,4 +30,4 @@ services:
       db:
         condition: service_healthy
     links:
-      - db:mysql
+      - db
